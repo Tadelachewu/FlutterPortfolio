@@ -22,6 +22,11 @@ Future<void> _pumpApp(WidgetTester tester) async {
 
 final _listScrollable = find.byType(Scrollable).first;
 
+Future<void> _openContactTab(WidgetTester tester) async {
+  await tester.tap(find.text('Contact').last, warnIfMissed: false);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('Shows Home screen with navigation', (WidgetTester tester) async {
     await _pumpApp(tester);
@@ -30,7 +35,11 @@ void main() {
     expect(find.text('Your Name'), findsOneWidget);
     expect(find.text('Projects'), findsWidgets);
 
-    await tester.scrollUntilVisible(find.text('Explore'), 200, scrollable: _listScrollable);
+    await tester.scrollUntilVisible(
+      find.text('Explore'),
+      200,
+      scrollable: _listScrollable,
+    );
     expect(find.text('Explore'), findsOneWidget);
   });
 
@@ -56,11 +65,13 @@ void main() {
 
   testWidgets('Contact form validates empty submission', (WidgetTester tester) async {
     await _pumpApp(tester);
+    await _openContactTab(tester);
 
-    await tester.tap(find.text('Contact').last);
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(find.text('Send Message'), 300, scrollable: _listScrollable);
+    await tester.scrollUntilVisible(
+      find.text('Send Message'),
+      300,
+      scrollable: _listScrollable,
+    );
     await tester.tap(find.text('Send Message'));
     await tester.pump();
 
@@ -69,23 +80,29 @@ void main() {
     expect(find.text('Please enter your message'), findsOneWidget);
   });
 
-  testWidgets('Contact form shows error when no backend is configured',
+  testWidgets('Contact form shows error when emailjs is not configured',
       (WidgetTester tester) async {
     await _pumpApp(tester);
+    await _openContactTab(tester);
 
-    await tester.tap(find.text('Contact').last);
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(find.text('Send Message'), 300, scrollable: _listScrollable);
+    await tester.scrollUntilVisible(
+      find.text('Send Message'),
+      300,
+      scrollable: _listScrollable,
+    );
 
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Your name'), 'Tadele');
+      find.widgetWithText(TextFormField, 'Your name'),
+      'Tadele',
+    );
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Your email'),
-        'tade2024bdugit@gmail.com');
+      find.widgetWithText(TextFormField, 'Your email'),
+      'tade2024bdugit@gmail.com',
+    );
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Message'),
-        'This is a valid test message that is long enough.');
+      find.widgetWithText(TextFormField, 'Message'),
+      'This is a valid test message that is long enough.',
+    );
     await tester.tap(find.text('Send Message'));
     await tester.pumpAndSettle();
 

@@ -1,6 +1,5 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
+import 'package:emailjs/emailjs.dart' as emailjs;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// A contact message submitted through the contact form.
 class ContactMessage {
@@ -15,44 +14,43 @@ class ContactMessage {
   });
 }
 
-/// Sends contact messages to the configured backend.
+/// Sends contact messages to [tade2024bdugit@gmail.com] via EmailJS.
 ///
-/// The destination email (`tade2024bdugit@gmail.com`) must be configured on
-/// the backend; the visitor's email is only the sender's contact info and is
-/// never treated as the destination.
+/// Credentials are read from environment variables (`.env` file):
+///   EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY,
+///   EMAILJS_PRIVATE_KEY
+///
+/// The visitor's email is only the sender's contact info — the destination
+/// address is configured in your EmailJS template, not in the app.
 class ContactService {
-  /// Set this to your backend endpoint, e.g. `https://api.example.com/contact`.
-  ///
-  /// Sending is disabled until a real endpoint is configured, so the app
-  /// never pretends a message was delivered.
-  static const String _apiEndpoint = '';
+  static String _value(String key) => dotenv.env[key]?.trim() ?? '';
 
-  /// Sends [message] to the contact backend.
-  ///
-  /// Throws if no backend is configured or the request fails, so the caller
-  /// can surface a user-friendly error.
   static Future<void> sendMessage(ContactMessage message) async {
-    if (_apiEndpoint.isEmpty) {
-      throw UnimplementedError(
-        'Contact backend is not configured yet. '
-        'Set ContactService._apiEndpoint.',
+    final serviceId = _value('EMAILJS_SERVICE_ID');
+    final templateId = _value('EMAILJS_TEMPLATE_ID');
+    final publicKey = _value('EMAILJS_PUBLIC_KEY');
+    final privateKey = _value('EMAILJS_PRIVATE_KEY');
+
+    if (serviceId.isEmpty || templateId.isEmpty || publicKey.isEmpty) {
+      throw StateError(
+        'EmailJS is not configured. '
+        'Fill in EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID and '
+        'EMAILJS_PUBLIC_KEY in the .env file.',
       );
     }
 
-    final response = await http.post(
-      Uri.parse(_apiEndpoint),
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({
+    await emailjs.send(
+      serviceId,
+      templateId,
+      {
         'name': message.name,
         'email': message.email,
         'message': message.message,
-      }),
+      },
+      emailjs.Options(
+        publicKey: publicKey,
+        privateKey: privateKey.isEmpty ? null : privateKey,
+      ),
     );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw http.ClientException(
-        'Contact request failed with status ${response.statusCode}',
-      );
-    }
   }
 }
