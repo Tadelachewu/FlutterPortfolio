@@ -1,5 +1,7 @@
-import 'package:emailjs/emailjs.dart' as emailjs;
+import 'dart:convert';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 /// A contact message submitted through the contact form.
 class ContactMessage {
@@ -14,43 +16,40 @@ class ContactMessage {
   });
 }
 
-/// Sends contact messages to [tade2024bdugit@gmail.com] via EmailJS.
+/// Sends contact messages to the Email Sender API.
 ///
-/// Credentials are read from environment variables (`.env` file):
-///   EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY,
-///   EMAILJS_PRIVATE_KEY
-///
-/// The visitor's email is only the sender's contact info — the destination
-/// address is configured in your EmailJS template, not in the app.
+/// The endpoint URL and API key are read from the `.env` file
+/// (`CONTACT_API_URL`, `CONTACT_API_KEY`). The API key is omitted from the
+/// request when left blank.
 class ContactService {
-  static String _value(String key) => dotenv.env[key]?.trim() ?? '';
-
   static Future<void> sendMessage(ContactMessage message) async {
-    final serviceId = _value('EMAILJS_SERVICE_ID');
-    final templateId = _value('EMAILJS_TEMPLATE_ID');
-    final publicKey = _value('EMAILJS_PUBLIC_KEY');
-    final privateKey = _value('EMAILJS_PRIVATE_KEY');
+    final endpoint = dotenv.env['CONTACT_API_URL']?.trim() ?? '';
+    final apiKey = dotenv.env['CONTACT_API_KEY']?.trim() ?? '';
 
-    if (serviceId.isEmpty || templateId.isEmpty || publicKey.isEmpty) {
+    if (endpoint.isEmpty) {
       throw StateError(
-        'EmailJS is not configured. '
-        'Fill in EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID and '
-        'EMAILJS_PUBLIC_KEY in the .env file.',
+        'CONTACT_API_URL is not configured. Set it in the .env file.',
       );
     }
 
-    await emailjs.send(
-      serviceId,
-      templateId,
-      {
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {
+        'Content-Type': 'application/json',
+        if (apiKey.isNotEmpty) 'x-api-key': apiKey,
+      },
+      body: jsonEncode({
         'name': message.name,
         'email': message.email,
         'message': message.message,
-      },
-      emailjs.Options(
-        publicKey: publicKey,
-        privateKey: privateKey.isEmpty ? null : privateKey,
-      ),
+      }),
     );
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (data['success'] != true) {
+      throw StateError(
+        data['message']?.toString() ?? 'Failed to send message.',
+      );
+    }
   }
 }
